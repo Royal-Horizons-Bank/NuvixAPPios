@@ -25,49 +25,50 @@ jobs:
 
       - name: Prebuild iOS Folder
         run: npx expo prebuild --platform ios
-
-      - name: Debug - Find Workspace Name
-        run: |
-          echo "Looking inside the iOS folder..."
-          ls -la ios/ | grep .xcworkspace
-      
-      # This will find the correct path automatically
+        env:
+          CI: true
 
       - name: Fix Expo Constants
         run: npx expo export --platform ios
-
-      - name: Run Fastlane Build
-        run: bundle exec fastlane build_sideload
         env:
           CI: true
-          EXPO_NO_TELEMETRY: 1
-          # This forces Expo to skip some of the "phone home" checks during build
+
+      - name: Run Fastlane Build
+        run: bundle exec fastlane build_app_bundle
+        env:
+          CI: true
           NODE_ENV: production
 
-      - name: Locate and Rename .app Bundle
+      - name: Stage and Zip App Bundle
         run: |
-          APP_PATH=$(find ./derived_data -name "Nuvix.app" -type d | head -n 1)
-          mkdir -p ./output
-          cp -R "$APP_PATH" ./output/Nuvix+.app
-          echo "App bundle is at ./output/Nuvix+.app"
+          # 1. Find the compiled .app in the derived_data folder
+          APP_PATH=$(find ./derived_data -name "*.app" -type d | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app bundle in derived_data"
+            exit 1
+          fi
+          
+          # 2. Create output directory and copy
+          mkdir -p ./output/Payload
+          cp -R "$APP_PATH" ./output/Payload/Nuvix+.app
+          
+          # 3. Zip it (Standard for sideloading/Windows transfer)
+          cd output
+          zip -r Nuvix-Plus-Build.zip Payload/
+          cd ..
+          
+          echo "Build staged and zipped at ./output/Nuvix-Plus-Build.zip"
 
-      - name: Upload .app Artifact
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-Plus-App-Bundle
-          path: ./output/Nuvix+.app
-          
-      - name: Find and Stage App Bundle
-        run: |
-          mkdir -p build-output
-          # The .app lives inside the .xcarchive
-          find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
-          
-          echo "Checking if we found the app..."
-          ls -R build-output
+          name: Nuvix-Plus-Sideload-Ready
+          path: ./output/Nuvix-Plus-Build.zip
 
-      - name: Upload Build Output
+      - name: Upload Error Logs on Failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: App-Bundle
-          path: build-output/
+          name: xcode-build-logs
+          path: /Users/runner/Library/Logs/gym/
