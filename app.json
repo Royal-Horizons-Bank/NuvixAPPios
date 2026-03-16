@@ -36,7 +36,16 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-build-properties",
+      [
+    "expo-build-properties",
+    {
+      "ios": {
+        "useFrameworks": "static"
+      }
+    }
+  ]
     ]
   }
 }
