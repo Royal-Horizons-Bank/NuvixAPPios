@@ -4,8 +4,8 @@ platform :ios do
   desc "Build the unsigned .app bundle"
   lane :build_sideload do
     build_app(
-      workspace: "ios/Nuvixapp.xcworkspace",
-      scheme: "NuvixApp",
+      workspace: "ios/Nuvix.xcworkspace", # Removed 'app' from the name
+      scheme: "Nuvix",                    # Updated to match the workspace
       configuration: "Release",
       skip_package_ipa: true, 
       xcargs: "CODE_SIGNING_ALLOWED=NO " \
