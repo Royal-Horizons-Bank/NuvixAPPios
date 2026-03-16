@@ -9,7 +9,7 @@ platform :ios do
       configuration: "Release",
       clean: true,
       skip_package_ipa: true, 
-      xcargs: "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGN_ENTITLEMENTS='' GCC_OPTIMIZATION_LEVEL=0 COMPILER_INDEX_STORE_ENABLE=NO STRIP_INSTALLED_PRODUCT=NO"
+      xcargs: "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGN_ENTITLEMENTS='' GCC_OPTIMIZATION_LEVEL=0 COMPILER_INDEX_STORE_ENABLE=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=NO OTHER_SWIFT_FLAGS='-no-verify-emitted-module-interface -Xfrontend -disable-implicit-concurrency-module-import'"
     )
   end
 end

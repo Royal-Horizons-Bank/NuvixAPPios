@@ -30,10 +30,7 @@ jobs:
           echo "Looking inside the iOS folder..."
           ls -la ios/ | grep .xcworkspace
       
-      - name: Set Xcode Version
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '15.4' # This will find the correct path automatically
+      # This will find the correct path automatically
 
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
