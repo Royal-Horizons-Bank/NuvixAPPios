@@ -3,13 +3,10 @@ default_platform(:ios)
 platform :ios do
   desc "Build the unsigned .app bundle"
   lane :build_sideload do
-    # Auto-detect the workspace and scheme if they vary
-    workspace_path = Dir.glob("ios/*.xcworkspace").first
-    scheme_name = File.basename(workspace_path, ".xcworkspace") if workspace_path
-
     build_app(
-      workspace: workspace_path, 
-      scheme: scheme_name,
+      # Hardcoding these ensures Fastlane never asks questions
+      workspace: "ios/Nuvix.xcworkspace", 
+      scheme: "Nuvix",
       configuration: "Release",
       clean: true,
       skip_package_ipa: true, 

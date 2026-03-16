@@ -26,31 +26,31 @@ jobs:
       - name: Prebuild iOS Folder
         run: npx expo prebuild --platform ios --no-install
 
-      - name: Check Generated Files
+      - name: Verify Workspace Presence
         run: |
-          echo "Checking ios directory..."
-          ls ios/
-          echo "Looking for workspace..."
-          find ios -name "*.xcworkspace"
+          if [ -d "ios/Nuvix.xcworkspace" ]; then
+            echo "✅ Workspace found."
+          else
+            echo "❌ Workspace NOT found. Listing ios directory content:"
+            ls -R ios
+            exit 1
+          fi
 
       - name: Patch Podfile for Xcode 16
-        # Use a wildcard to ensure we find the Podfile even if naming is slightly off
         run: |
-          PODFILE=$(find ios -name "Podfile" | head -n 1)
           sed -i '' "s/post_install do |installer|/post_install do |installer|\\
             installer.pods_project.targets.each do |target|\\
               target.build_configurations.each do |config|\\
                 config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'\\
                 config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'\\
               end\\
-            end/" "$PODFILE"
+            end/" ios/Podfile
 
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
         env:
           CI: true
           NODE_ENV: production
-          # Reduces parallel workers to prevent the runner from running out of RAM
           MAX_PARALLEL_CODE_SIGN_JOBS: 1
 
       - name: Stage and Zip App Bundle
