@@ -18,25 +18,16 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-cache: true 
+          bundler-cache: true
 
       - name: Install Dependencies
         run: npm install
 
       - name: Prebuild iOS Folder
+        # --no-install allows us to manually handle Pods and Patching
         run: npx expo prebuild --platform ios --no-install
 
-      - name: Verify Workspace Presence
-        run: |
-          if [ -d "ios/Nuvix.xcworkspace" ]; then
-            echo "✅ Workspace found."
-          else
-            echo "❌ Workspace NOT found. Listing ios directory content:"
-            ls -R ios
-            exit 1
-          fi
-
-      - name: Patch Podfile for Xcode 16
+      - name: Patch Podfile for Xcode 16 & Performance
         run: |
           sed -i '' "s/post_install do |installer|/post_install do |installer|\\
             installer.pods_project.targets.each do |target|\\
@@ -46,23 +37,31 @@ jobs:
               end\\
             end/" ios/Podfile
 
+      - name: Install CocoaPods
+        # This step creates the Nuvix.xcworkspace file required by Fastlane
+        run: |
+          cd ios
+          pod install
+
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
         env:
           CI: true
           NODE_ENV: production
+          # Prevents excessive RAM usage on small runners
           MAX_PARALLEL_CODE_SIGN_JOBS: 1
 
-      - name: Stage and Zip App Bundle
+      - name: Find and Stage App Bundle
         run: |
-          APP_PATH=$(find ./derived_data -name "*.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then echo "App not found"; exit 1; fi
-          mkdir -p ./output/Payload
-          cp -R "$APP_PATH" ./output/Payload/Nuvix+.app
-          cd output && zip -r Nuvix-Plus-Build.zip Payload/ && cd ..
+          mkdir -p build-output
+          # Locates the .app folder created during the 'archive' step
+          find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
+          
+          echo "Verifying build output..."
+          ls -R build-output
 
-      - name: Upload Build Artifact
+      - name: Upload Build Output
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-Plus-Sideload-Ready
-          path: ./output/Nuvix-Plus-Build.zip
+          name: Nuvix-App-Bundle
+          path: build-output/

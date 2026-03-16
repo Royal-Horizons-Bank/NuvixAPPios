@@ -4,7 +4,6 @@ platform :ios do
   desc "Build the unsigned .app bundle"
   lane :build_sideload do
     build_app(
-      # Hardcoding these ensures Fastlane never asks questions
       workspace: "ios/Nuvix.xcworkspace", 
       scheme: "Nuvix",
       configuration: "Release",
