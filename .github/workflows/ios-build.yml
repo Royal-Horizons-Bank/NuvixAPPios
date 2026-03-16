@@ -12,6 +12,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -32,9 +33,16 @@ jobs:
       
       # This will find the correct path automatically
 
+      - name: Fix Expo Constants
+        run: npx expo export --platform ios
+
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
-
+        env:
+          CI: true
+          EXPO_NO_TELEMETRY: 1
+          # This forces Expo to skip some of the "phone home" checks during build
+          NODE_ENV: production
       - name: Find and Stage App Bundle
         run: |
           mkdir -p build-output
