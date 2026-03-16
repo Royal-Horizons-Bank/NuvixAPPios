@@ -24,20 +24,26 @@ jobs:
         run: npm install
 
       - name: Prebuild iOS Folder
-        # Using --no-install so we can patch the Podfile BEFORE pods are installed
         run: npx expo prebuild --platform ios --no-install
-        env:
-          CI: true
+
+      - name: Check Generated Files
+        run: |
+          echo "Checking ios directory..."
+          ls ios/
+          echo "Looking for workspace..."
+          find ios -name "*.xcworkspace"
 
       - name: Patch Podfile for Xcode 16
+        # Use a wildcard to ensure we find the Podfile even if naming is slightly off
         run: |
+          PODFILE=$(find ios -name "Podfile" | head -n 1)
           sed -i '' "s/post_install do |installer|/post_install do |installer|\\
             installer.pods_project.targets.each do |target|\\
               target.build_configurations.each do |config|\\
                 config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'\\
                 config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'\\
               end\\
-            end/" ios/Podfile
+            end/" "$PODFILE"
 
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
