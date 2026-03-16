@@ -24,21 +24,24 @@ jobs:
         run: npm install
 
       - name: Prebuild iOS Folder
-          run: npx expo prebuild --platform ios --no-install
+        # Using --no-install to allow for Podfile patching before running pod install
+        run: npx expo prebuild --platform ios --no-install
 
-      - name: Patch Podfile for Xcode 16
+      - name: Patch Podfile for Xcode 16 & Performance
         run: |
-          # This patch forces every single pod target to turn off Sandboxing and Indexing
+          # This script injects performance and compatibility settings into the Podfile
           sed -i '' "s/post_install do |installer|/post_install do |installer|\\
             installer.pods_project.targets.each do |target|\\
               target.build_configurations.each do |config|\\
                 config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'\\
                 config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'\\
                 config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'\\
+                config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'\\
               end\\
             end/" ios/Podfile
 
       - name: Install CocoaPods
+        # Generates the Nuvix.xcworkspace file required for the build 
         run: |
           cd ios
           pod install
@@ -48,14 +51,16 @@ jobs:
         env:
           CI: true
           NODE_ENV: production
+          # Limits parallel jobs to prevent runner memory exhaustion
+          MAX_PARALLEL_CODE_SIGN_JOBS: 1
 
       - name: Find and Stage App Bundle
         run: |
           mkdir -p build-output
-          # Locates the .app folder created during the 'archive' step
+          # Locates the .app folder created during the archive process
           find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
           
-          echo "Verifying build output..."
+          echo "Verifying build output contents..."
           ls -R build-output
 
       - name: Upload Build Output
