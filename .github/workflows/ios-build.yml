@@ -29,6 +29,12 @@ jobs:
         run: |
           echo "Looking inside the iOS folder..."
           ls -la ios/ | grep .xcworkspace
+      
+      - name: Set Xcode Version
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Run Fastlane Build
+        run: bundle exec fastlane build_sideload
 
       - name: Run Fastlane Build
         # Adding --verbose will force the raw xcodebuild errors into the GitHub console
