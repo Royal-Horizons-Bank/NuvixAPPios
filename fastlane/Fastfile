@@ -15,9 +15,11 @@ platform :ios do
         "CODE_SIGNING_REQUIRED=NO",
         "CODE_SIGN_IDENTITY=''",
         "CODE_SIGN_ENTITLEMENTS=''",
-        "GCC_OPTIMIZATION_LEVEL=0",
-        "ENABLE_USER_SCRIPT_SANDBOXING=NO", # Second layer of defense
-        "ARCHS=arm64"
+        "GCC_OPTIMIZATION_LEVEL=0", # Keep this at 0 for speed
+        "ENABLE_USER_SCRIPT_SANDBOXING=NO",
+        "ARCHS=arm64",
+        # CRITICAL: Prevents timeout by disabling background indexing
+        "COMPILER_INDEX_STORE_ENABLE=NO"
       ].join(" ")
     )
   end
