@@ -1,16 +1,36 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build the .app bundle for Nuvix+"
+  desc "Build an unsigned .app bundle for sideloading"
   lane :build_sideload do
+    # Ensure we use the correct Xcode version available on the runner
+    # xcode_select("/Applications/Xcode_16.4.app") 
+
     build_app(
-      workspace: "ios/Nuvix.xcworkspace",
-      scheme: "Nuvix",                 
+      workspace: "ios/Nuvix.xcworkspace", 
+      scheme: "Nuvix",
       configuration: "Release",
       clean: true,
+      # This skips the .ipa packaging which requires full code signing
       skip_package_ipa: true, 
+      # Ensures the build output stays in a predictable place for GitHub Actions
       derived_data_path: "./derived_data",
-      xcargs: "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGN_ENTITLEMENTS='' GCC_OPTIMIZATION_LEVEL=0"
+      build_path: "./build",
+      
+      # These xcargs are the "Nuclear Option" for Xcode 16+
+      xcargs: [
+        "CODE_SIGNING_ALLOWED=NO",
+        "CODE_SIGNING_REQUIRED=NO",
+        "CODE_SIGN_IDENTITY=''",
+        "CODE_SIGN_ENTITLEMENTS=''",
+        "GCC_OPTIMIZATION_LEVEL=0",
+        "COMPILER_INDEX_STORE_ENABLE=NO",
+        # CRITICAL: Fixes the EXConstants / Status 65 error in Xcode 16
+        "ENABLE_USER_SCRIPT_SANDBOXING=NO",
+        # Ensures compatibility with physical iPhone hardware (ARM64)
+        "ARCHS=arm64",
+        "ONLY_ACTIVE_ARCH=NO"
+      ].join(" ")
     )
   end
 end

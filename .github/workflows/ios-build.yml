@@ -12,38 +12,78 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2' # Standard version for macOS runners
-          bundler-cache: true
+          ruby-version: '3.2'
+          bundler-cache: true 
 
       - name: Install Dependencies
         run: npm install
 
       - name: Prebuild iOS Folder
-        # This creates the /ios folder that was missing
-        run: npx expo prebuild --platform ios
-
-      - name: Run Fastlane Build
-        # We run it from the root since 'expo prebuild' creates the workspace
-        run: bundle exec fastlane build_sideload
+        run: npx expo prebuild --platform ios --no-install
         env:
           CI: true
 
-      - name: Find and Stage App Bundle
+      - name: Patch Podfile for Xcode 16
         run: |
-          mkdir -p build-output
-          # The .app lives inside the .xcarchive in the Products/Applications folder
-          find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
-          
-          # Verification
-          echo "Checking if we found the app..."
-          ls -R build-output
+          # This disables User Script Sandboxing in the generated Pods
+          # which prevents the EXConstants script failure (Status 65)
+          sed -i '' "s/post_install do |installer|/post_install do |installer|\\
+            installer.pods_project.targets.each do |target|\\
+              target.build_configurations.each do |config|\\
+                config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'\\
+              end\\
+            end/" ios/Podfile
 
-      - name: Upload Build Output
+      - name: Install Pods
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Fix Expo Constants
+        run: npx expo export --platform ios
+        env:
+          CI: true
+
+      - name: Run Fastlane Build
+        run: bundle exec fastlane build_sideload
+        env:
+          CI: true
+          NODE_ENV: production
+
+      - name: Stage and Zip App Bundle
+        run: |
+          # 1. Find the compiled .app in the derived_data folder
+          APP_PATH=$(find ./derived_data -name "*.app" -type d | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app bundle"
+            exit 1
+          fi
+          
+          # 2. Create Payload structure (Standard for iOS bundles)
+          mkdir -p ./output/Payload
+          cp -R "$APP_PATH" ./output/Payload/Nuvix+.app
+          
+          # 3. Zip for easy download to Windows
+          cd output
+          zip -r Nuvix-Plus-Build.zip Payload/
+          cd ..
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UFitness-App-Bundle
-          path: build-output/
+          name: Nuvix-Plus-Sideload-Ready
+          path: ./output/Nuvix-Plus-Build.zip
+
+      - name: Upload Error Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-logs
+          path: /Users/runner/Library/Logs/gym/
