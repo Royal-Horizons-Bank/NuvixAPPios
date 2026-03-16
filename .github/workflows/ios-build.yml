@@ -43,6 +43,20 @@ jobs:
           EXPO_NO_TELEMETRY: 1
           # This forces Expo to skip some of the "phone home" checks during build
           NODE_ENV: production
+
+      - name: Locate and Rename .app Bundle
+        run: |
+          APP_PATH=$(find ./derived_data -name "Nuvix.app" -type d | head -n 1)
+          mkdir -p ./output
+          cp -R "$APP_PATH" ./output/Nuvix+.app
+          echo "App bundle is at ./output/Nuvix+.app"
+
+      - name: Upload .app Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nuvix-Plus-App-Bundle
+          path: ./output/Nuvix+.app
+          
       - name: Find and Stage App Bundle
         run: |
           mkdir -p build-output
