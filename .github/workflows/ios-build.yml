@@ -31,7 +31,8 @@ jobs:
           ls -la ios/ | grep .xcworkspace
 
       - name: Run Fastlane Build
-        run: bundle exec fastlane build_sideload
+        # Adding --verbose will force the raw xcodebuild errors into the GitHub console
+        run: bundle exec fastlane build_sideload --verbose
         env:
           CI: true
 

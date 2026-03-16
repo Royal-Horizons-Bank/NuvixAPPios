@@ -4,13 +4,13 @@ platform :ios do
   desc "Build a signed app for sideloading"
   lane :build_sideload do
     build_app(
-      workspace: "ios/Nuvix.xcworkspace", 
-      scheme: "Nuvix",
-      configuration: "Release",
-      clean: true, # Force a clean build to prevent Xcode 16 cache issues
-      skip_package_ipa: true, 
-      # We added COMPILER_INDEX_STORE_ENABLE=NO to speed up and stabilize cloud builds
-      xcargs: "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGN_ENTITLEMENTS='' GCC_OPTIMIZATION_LEVEL=0 COMPILER_INDEX_STORE_ENABLE=NO"
-    )
+  workspace: "ios/Nuvix.xcworkspace", 
+  scheme: "Nuvix",
+  configuration: "Release",
+  clean: true,
+  skip_package_ipa: true, 
+  # Added LD_VERIFY_BITCODE=NO and OTHER_LDFLAGS to help with library linking
+  xcargs: "CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' CODE_SIGN_ENTITLEMENTS='' GCC_OPTIMIZATION_LEVEL=0 COMPILER_INDEX_STORE_ENABLE=NO LD_VERIFY_BITCODE=NO OTHER_LDFLAGS='$(inherited) -ObjC'"
+)
   end
 end
