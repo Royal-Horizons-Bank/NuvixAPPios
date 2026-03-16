@@ -14,6 +14,11 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Fix Node Path for Xcode
+        run: |
+          # Creates a shortcut to Node so Xcode's build scripts can find it
+          sudo ln -s $(which node) /usr/local/bin/node
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -69,9 +74,10 @@ jobs:
           name: Nuvix-App-Bundle
           path: build-output/
         
-      - name: Print Xcode Build Log on Failure
+      - name: Find Exact Xcode Error
         if: failure()
         run: |
-          echo "🚨 DUMPING XCODE BUILD LOG 🚨"
-          # Prints the last 250 lines of the actual build log
-          tail -n 250 /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log
+          echo "🚨 SEARCHING FOR FATAL ERRORS 🚨"
+          grep -A 5 -B 5 -i "error:" /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log || echo "No explicit 'error:' found."
+          echo "🚨 SEARCHING FOR PHASE SCRIPT FAILURES 🚨"
+          grep -A 5 -B 5 "PhaseScriptExecution" /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log || echo "No PhaseScriptExecution found."
