@@ -5,8 +5,8 @@ platform :ios do
   lane :build_sideload do
     build_app(
       # CHANGE THESE TWO LINES TO MATCH YOUR NEW PROJECT NAME
-      workspace: "ios/Nuvix+.xcworkspace", 
-      scheme: "Nuvix+",
+      workspace: "ios/Nuvix.xcworkspace", 
+      scheme: "Nuvix",
       
       configuration: "Release",
       skip_package_ipa: true, 
