@@ -68,3 +68,10 @@ jobs:
         with:
           name: Nuvix-App-Bundle
           path: build-output/
+        
+      - name: Print Xcode Build Log on Failure
+        if: failure()
+        run: |
+          echo "🚨 DUMPING XCODE BUILD LOG 🚨"
+          # Prints the last 250 lines of the actual build log
+          tail -n 250 /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log
