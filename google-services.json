@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791721971261",
+    "project_id": "nuvix-collective",
+    "storage_bucket": "nuvix-collective.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791721971261:android:2fa13dca85a45b15a22454",
+        "android_client_info": {
+          "package_name": "com.riley_faze.nuvixAPP"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCxuLV5TuqOK74UXRnFH5WzfJX7KRnVyA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

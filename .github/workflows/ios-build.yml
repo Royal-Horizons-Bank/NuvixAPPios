@@ -1,0 +1,46 @@
+name: iOS Build
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true 
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Prebuild iOS Folder
+        run: npx expo prebuild --platform ios
+
+      - name: Run Fastlane Build
+        run: bundle exec fastlane build_sideload
+        env:
+          CI: true
+
+      - name: Find and Stage App Bundle
+        run: |
+          mkdir -p build-output
+          # The .app lives inside the .xcarchive
+          find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
+          
+          echo "Checking if we found the app..."
+          ls -R build-output
+
+      - name: Upload Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-Bundle
+          path: build-output/
