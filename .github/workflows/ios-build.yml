@@ -25,6 +25,11 @@ jobs:
       - name: Prebuild iOS Folder
         run: npx expo prebuild --platform ios
 
+      - name: Debug - Find Workspace Name
+        run: |
+          echo "Looking inside the iOS folder..."
+          ls -la ios/ | grep .xcworkspace
+
       - name: Run Fastlane Build
         run: bundle exec fastlane build_sideload
         env:
