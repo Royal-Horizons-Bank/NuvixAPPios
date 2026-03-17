@@ -1,83 +1,58 @@
-name: iOS Build
-on: [push]
+name: Build Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Fix Node Path for Xcode
-        run: |
-          # Creates a shortcut to Node so Xcode's build scripts can find it
-          sudo ln -s $(which node) /usr/local/bin/node
+          node-version: '18'
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
-          bundler-cache: true
+          ruby-version: '3.2' # Standard for modern React Native
+          bundler-cache: true # Runs 'bundle install' automatically if Gemfile exists
 
-      - name: Install Dependencies
+      - name: Install JS dependencies
         run: npm install
 
-      - name: Prebuild iOS Folder
-        # Using --no-install to allow for Podfile patching before running pod install
-        run: npx expo prebuild --platform ios --no-install
-
-      - name: Patch Podfile for Xcode 16 & Performance
-        run: |
-          # This script injects performance and compatibility settings into the Podfile
-          sed -i '' "s/post_install do |installer|/post_install do |installer|\\
-            installer.pods_project.targets.each do |target|\\
-              target.build_configurations.each do |config|\\
-                config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'\\
-                config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'\\
-                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'\\
-                config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'\\
-              end\\
-            end/" ios/Podfile
+      - name: Generate Native iOS Code
+        run: npx expo prebuild --platform ios
 
       - name: Install CocoaPods
-        # Generates the Nuvix.xcworkspace file required for the build 
         run: |
           cd ios
-          pod install
+          bundle exec pod install
 
-      - name: Run Fastlane Build
-        run: bundle exec fastlane build_sideload
-        env:
-          CI: true
-          NODE_ENV: production
-          # Limits parallel jobs to prevent runner memory exhaustion
-          MAX_PARALLEL_CODE_SIGN_JOBS: 1
-
-      - name: Find and Stage App Bundle
+      - name: Build Unsigned Archive
         run: |
-          mkdir -p build-output
-          # Locates the .app folder created during the archive process
-          find ~/Library/Developer/Xcode/Archives -name "*.app" -type d -exec cp -R {} ./build-output/ \;
-          
-          echo "Verifying build output contents..."
-          ls -R build-output
+          cd ios
+          xcodebuild archive \
+            -workspace YourAppName.xcworkspace \
+            -scheme YourAppName \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/YourAppName.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
 
-      - name: Upload Build Output
+      - name: Package into .ipa
+        run: |
+          cd ios/build
+          mkdir -p Payload
+          cp -R YourAppName.xcarchive/Products/Applications/YourAppName.app Payload/
+          zip -r app.ipa Payload
+
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-App-Bundle
-          path: build-output/
-        
-      - name: Find Exact Xcode Error
-        if: failure()
-        run: |
-          echo "🚨 SEARCHING FOR FATAL ERRORS 🚨"
-          grep -A 5 -B 5 -i "error:" /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log || echo "No explicit 'error:' found."
-          echo "🚨 SEARCHING FOR PHASE SCRIPT FAILURES 🚨"
-          grep -A 5 -B 5 "PhaseScriptExecution" /Users/runner/Library/Logs/gym/Nuvix-Nuvix.log || echo "No PhaseScriptExecution found."
+          name: unsigned-ipa
+          path: ios/build/app.ipa
