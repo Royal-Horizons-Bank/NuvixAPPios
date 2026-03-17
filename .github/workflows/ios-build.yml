@@ -26,13 +26,11 @@ jobs:
           bundler-cache: true
 
       - name: Install JS dependencies
-        run: |
-          npm install
-          # Force remove any ghost worklets if they exist
-          rm -rf node_modules/react-native-worklets-core/cpp
+        run: npm install
 
-      - name: Generate Native iOS Code
-        run: npx expo prebuild --platform ios --clean
+      - name: Clean and Prebuild
+        run: |
+          npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
         run: |
@@ -57,7 +55,7 @@ jobs:
         if: always()
         run: |
           mkdir -p Payload
-          # Search for the .app folder - excluding the Pods directory
+          # Search everywhere for the .app folder - specifically in the build folder
           APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
@@ -70,7 +68,7 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL: Build failed. Check logs."
+            echo "CRITICAL: Build failed. Check the logs above."
             exit 1
           fi
 
