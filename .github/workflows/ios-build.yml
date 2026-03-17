@@ -34,6 +34,7 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
+          pod repo update
           bundle exec pod install
 
       - name: Build Unsigned Archive
@@ -53,12 +54,11 @@ jobs:
         if: always()
         run: |
           mkdir -p Payload
-          # Hunt for the .app file in the entire workspace
-          # We look for the one in the Release-iphoneos folder specifically
-          APP_PATH=$(find . -name "*.app" -type d | grep -v "Pods" | grep "Release-iphoneos" | head -n 1)
+          # Locate the .app folder - specifically excluding Pods folder
+          APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "Direct search failed. Trying global fallback..."
+            echo "Fallback search for Nuvixapp.app..."
             APP_PATH=$(find . -name "Nuvixapp.app" -type d | grep -v "Pods" | head -n 1)
           fi
 
@@ -67,7 +67,7 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL: Build failed to produce a .app file. Check Xcode logs above."
+            echo "CRITICAL: Build failed. Check the logs above."
             exit 1
           fi
 
