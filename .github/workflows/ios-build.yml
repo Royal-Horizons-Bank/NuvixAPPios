@@ -28,7 +28,7 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Generate Native iOS Code
+      - name: Generate Native iOS Code (Prebuild)
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
@@ -39,35 +39,32 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # Target 'nuvixapp' specifically
+          # 1. Automatically detect the scheme name
+          SCHEME_NAME=$(xcodebuild -list -json | jq -r '.workspace.schemes[0]')
+          echo "Detected Scheme: $SCHEME_NAME"
+          
+          # 2. Build using the detected scheme
           xcodebuild archive \
             -workspace *.xcworkspace \
-            -scheme nuvixapp \
+            -scheme "$SCHEME_NAME" \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath ./nuvixapp.xcarchive \
+            -archivePath ./build_output.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
-      - name: Locate and Package .app
+      - name: Package into .ipa
         run: |
-          # 1. Create a standard IPA structure
           mkdir -p Payload
+          # Search everywhere for the .app folder generated
+          APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
+          echo "Packing app from: $APP_PATH"
           
-          # 2. Find the .app folder wherever it was created
-          # We search the whole workspace to be safe
-          APP_DIR=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
-          
-          echo "Found App at: $APP_DIR"
-          
-          # 3. Copy the found .app into the Payload folder
-          cp -R "$APP_DIR" Payload/
-          
-          # 4. Zip it up (This zip is effectively your IPA)
-          zip -r nuvix_unsigned.ipa Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r nuvix_build.ipa Payload
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-Unsigned-Package
-          path: nuvix_unsigned.ipa
+          name: Nuvix-App-Final
+          path: nuvix_build.ipa
