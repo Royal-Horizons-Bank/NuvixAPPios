@@ -36,11 +36,11 @@ jobs:
         run: |
           cd ios
           xcodebuild archive \
-            -workspace YourAppName.xcworkspace \
-            -scheme YourAppName \
+            -workspace Nuvix.xcworkspace \
+            -scheme Nuvix \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath $PWD/build/YourAppName.xcarchive \
+            -archivePath $PWD/build/Nuvix.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
@@ -48,7 +48,7 @@ jobs:
         run: |
           cd ios/build
           mkdir -p Payload
-          cp -R YourAppName.xcarchive/Products/Applications/YourAppName.app Payload/
+          cp -R Nuvix.xcarchive/Products/Applications/Nuvix.app Payload/
           zip -r app.ipa Payload
 
       - name: Upload IPA Artifact
