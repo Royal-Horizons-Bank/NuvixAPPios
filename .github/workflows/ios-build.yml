@@ -41,11 +41,11 @@ jobs:
           cd ios
           # We use 'wholemodule' mode to help React 19 / Reanimated find its headers
           xcodebuild archive \
-            -workspace Nuvixapp.xcworkspace \
-            -scheme Nuvixapp \
+            -workspace nuvixAPP.xcworkspace \
+            -scheme nuvixAPP \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath ./Nuvixapp.xcarchive \
+            -archivePath ./nuvixAPP.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             SWIFT_COMPILATION_MODE=wholemodule
@@ -55,7 +55,7 @@ jobs:
         run: |
           mkdir -p Payload
           # Search for the .app file inside the archive we just made
-          APP_PATH=$(find ios/Nuvixapp.xcarchive -name "*.app" -type d | head -n 1)
+          APP_PATH=$(find ios/nuvixAPP.xcarchive -name "*.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
           
           if [ -z "$APP_PATH" ]; then
@@ -64,13 +64,13 @@ jobs:
           fi
           
           cp -R "$APP_PATH" Payload/
-          zip -r Nuvixapp_unsigned.ipa Payload
+          zip -r nuvixAPP_unsigned.ipa Payload
 
       - name: Upload Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvixapp-Build
+          name: nuvixAPP-Build
           path: |
-            Nuvixapp_unsigned.ipa
+            nuvixAPP_unsigned.ipa
             ios/build_output.log
