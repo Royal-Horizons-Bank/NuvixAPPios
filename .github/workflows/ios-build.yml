@@ -37,10 +37,8 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
-        id: xcodebuild
         run: |
           cd ios
-          # Creating the log file in the workspace root instead of the /ios subfolder
           xcodebuild clean archive \
             -workspace *.xcworkspace \
             -scheme Nuvix \
@@ -48,27 +46,27 @@ jobs:
             -sdk iphoneos \
             -archivePath $PWD/build/Nuvix.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO | tee ../xcode_build.log
+            CODE_SIGNING_REQUIRED=NO
 
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcode-build-log
-          path: xcode_build.log
-
-      - name: Package into .ipa
-        if: success()
+      - name: Locate and Package .app
         run: |
-          cd ios/build
-          mkdir -p Payload
-          # Using a wildcard to catch the .app folder even if named Nuvix+ or Nuvix
-          cp -R Nuvix.xcarchive/Products/Applications/*.app Payload/
-          zip -r app.ipa Payload
+          mkdir -p final_output/Payload
+          # This command finds the actual .app file wherever it was generated
+          APP_PATH=$(find ios/build/Nuvix.xcarchive -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: No .app file found in the archive!"
+            exit 1
+          fi
+          
+          cp -R "$APP_PATH" final_output/Payload/
+          cd final_output
+          zip -r ../Nuvix_Build.ipa Payload
+          cd ..
 
-      - name: Upload IPA Artifact
-        if: success()
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-unsigned-ipa
-          path: ios/build/app.ipa
+          name: Nuvix-App-Package
+          path: Nuvix_Build.ipa
