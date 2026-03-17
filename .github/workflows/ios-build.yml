@@ -28,7 +28,7 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Generate Native iOS Code (Prebuild)
+      - name: Generate Native iOS Code
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
@@ -37,39 +37,37 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
-        id: xcodebuild
         run: |
           cd ios
-          # 'tee' saves the log to xcode_raw.log even if it fails
-          xcodebuild clean archive \
+          # Target 'nuvixapp' specifically
+          xcodebuild archive \
             -workspace *.xcworkspace \
-            -scheme Nuvix \
+            -scheme nuvixapp \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath $PWD/build/Nuvix.xcarchive \
+            -archivePath ./nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO | tee ../xcode_raw.log
-
-      - name: Upload Logs on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcode-failure-logs
-          path: xcode_raw.log
+            CODE_SIGNING_REQUIRED=NO
 
       - name: Locate and Package .app
-        if: success()
         run: |
-          mkdir -p final_output/Payload
-          APP_PATH=$(find ios/build/Nuvix.xcarchive -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          cp -R "$APP_PATH" final_output/Payload/
-          cd final_output
-          zip -r ../Nuvix_Build.ipa Payload
+          # 1. Create a standard IPA structure
+          mkdir -p Payload
+          
+          # 2. Find the .app folder wherever it was created
+          # We search the whole workspace to be safe
+          APP_DIR=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
+          
+          echo "Found App at: $APP_DIR"
+          
+          # 3. Copy the found .app into the Payload folder
+          cp -R "$APP_DIR" Payload/
+          
+          # 4. Zip it up (This zip is effectively your IPA)
+          zip -r nuvix_unsigned.ipa Payload
 
-      - name: Upload IPA
-        if: success()
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-App-Package
-          path: Nuvix_Build.ipa
+          name: Nuvix-Unsigned-Package
+          path: nuvix_unsigned.ipa
