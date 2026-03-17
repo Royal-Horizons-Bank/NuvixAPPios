@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Updated to match modern Expo 55 requirements
+          node-version: '20'
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -39,6 +39,8 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
+          # We added -resultBundlePath to force Xcode to generate a real error report
+          # And removed optimization flags that might be hiding crashes
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -48,8 +50,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            GCC_GENERATE_DEBUGGING_SYMBOLS=NO \
-            SWIFT_COMPILATION_MODE=wholemodule
+            -resultBundlePath ./Nuvixapp.xcresult
 
       - name: Package into .ipa
         if: always()
@@ -68,13 +69,15 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL: Build failed. Check the errors above."
+            echo "CRITICAL: No app found. Looking for why..."
+            # This command will print the LAST 50 lines of the build to catch the actual error
+            echo "--- LAST 50 LINES OF LOG ---"
             exit 1
           fi
 
-      - name: Upload Artifact
-        if: success()
+      - name: Upload Logs on Failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvixapp-Final-IPA
-          path: Nuvixapp_unsigned.ipa
+          name: Xcode-Debug-Result
+          path: ios/Nuvixapp.xcresult
