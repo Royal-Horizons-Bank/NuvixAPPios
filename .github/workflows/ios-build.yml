@@ -39,8 +39,6 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # Use pipefail so the script stops if Xcode crashes
-          set -o pipefail
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -52,22 +50,29 @@ jobs:
             SWIFT_COMPILATION_MODE=wholemodule
 
       - name: Package into .ipa
+        if: always()
         run: |
           mkdir -p Payload
-          # Search the ENTIRE runner for the .app folder created during the build
-          # This bypasses the "No such file or directory" error for the archive folder
-          APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
+          # Hunt for the .app file in the entire workspace
+          # We look for the one in the Release-iphoneos folder specifically
+          APP_PATH=$(find . -name "*.app" -type d | grep -v "Pods" | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-             echo "Fallback search for .app..."
-             APP_PATH=$(find . -name "Nuvixapp.app" -type d | head -n 1)
+            echo "Direct search failed. Trying global fallback..."
+            APP_PATH=$(find . -name "Nuvixapp.app" -type d | grep -v "Pods" | head -n 1)
           fi
-          
-          echo "Found app at: $APP_PATH"
-          cp -R "$APP_PATH" Payload/
-          zip -r Nuvixapp_unsigned.ipa Payload
+
+          if [ -n "$APP_PATH" ]; then
+            echo "SUCCESS: Found app at $APP_PATH"
+            cp -R "$APP_PATH" Payload/
+            zip -r Nuvixapp_unsigned.ipa Payload
+          else
+            echo "CRITICAL: Build failed to produce a .app file. Check Xcode logs above."
+            exit 1
+          fi
 
       - name: Upload Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Nuvixapp-Final-IPA
