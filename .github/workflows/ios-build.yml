@@ -28,17 +28,16 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Clean and Prebuild
-        run: |
-          npx expo prebuild --platform ios --clean
+      - name: Generate Native iOS Code
+        run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
         run: |
           cd ios
-          pod repo update
           bundle exec pod install
 
       - name: Build Unsigned Archive
+        # Raw output here so you can see any specific library errors in the console
         run: |
           cd ios
           xcodebuild archive \
@@ -55,11 +54,12 @@ jobs:
         if: always()
         run: |
           mkdir -p Payload
-          # Search everywhere for the .app folder - specifically in the build folder
+          # The "Search and Rescue" command
+          # Scans the entire workspace for the .app folder created by the build
           APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "Fallback search for Nuvixapp.app..."
+            echo "Direct search failed. Trying global fallback..."
             APP_PATH=$(find . -name "Nuvixapp.app" -type d | grep -v "Pods" | head -n 1)
           fi
 
@@ -68,7 +68,7 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL: Build failed. Check the logs above."
+            echo "CRITICAL FAILURE: No .app file was created. Check the Build Archive logs above."
             exit 1
           fi
 
