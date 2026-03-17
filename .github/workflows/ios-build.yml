@@ -1,6 +1,10 @@
 name: Build Unsigned iOS IPA
 
 on:
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -18,24 +22,33 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2' # Standard for modern React Native
-          bundler-cache: true # Runs 'bundle install' automatically if Gemfile exists
+          ruby-version: '3.2'
+          bundler-cache: true
 
       - name: Install JS dependencies
         run: npm install
 
-      - name: Generate Native iOS Code
-        run: npx expo prebuild --platform ios
+      - name: Generate Native iOS Code (Prebuild)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Debug - List generated iOS files
+        run: ls -la ios
 
       - name: Install CocoaPods
         run: |
           cd ios
           bundle exec pod install
 
+      - name: Debug - Verify Xcode Scheme
+        run: |
+          cd ios
+          xcodebuild -list -workspace Nuvix.xcworkspace
+
       - name: Build Unsigned Archive
         run: |
           cd ios
-          xcodebuild archive \
+          # Using "Nuvix" because Expo strips the "+" from "Nuvix+"
+          xcodebuild clean archive \
             -workspace Nuvix.xcworkspace \
             -scheme Nuvix \
             -configuration Release \
@@ -54,5 +67,5 @@ jobs:
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-ipa
+          name: Nuvix-unsigned-ipa
           path: ios/build/app.ipa
