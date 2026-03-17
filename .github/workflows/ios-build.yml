@@ -28,7 +28,7 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Generate Native iOS Code (Prebuild)
+      - name: Generate Native iOS Code
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
@@ -39,7 +39,8 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # 'wholemodule' helps React 19 / Reanimated find its headers during archiving
+          # We use 'pipefail' so if xcodebuild fails, the whole action stops early
+          set -o pipefail
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -48,23 +49,27 @@ jobs:
             -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            SWIFT_COMPILATION_MODE=wholemodule | tee ../xcode_raw.log
+            SWIFT_COMPILATION_MODE=wholemodule
 
       - name: Package into .ipa
         if: success()
         run: |
           mkdir -p Payload
-          # Search for the .app folder inside the archive we just made
-          APP_PATH=$(find ios/Nuvixapp.xcarchive -name "*.app" -type d | head -n 1)
+          # Search everywhere for any .app folder created in the build process
+          APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Searching for any .app as fallback..."
+            APP_PATH=$(find . -name "*.app" -type d | head -n 1)
+          fi
+          
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" Payload/
           zip -r Nuvixapp_unsigned.ipa Payload
 
-      - name: Upload Artifacts
+      - name: Upload Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvixapp-Build-Results
-          path: |
-            Nuvixapp_unsigned.ipa
-            xcode_raw.log
+          name: Nuvixapp-Package
+          path: Nuvixapp_unsigned.ipa
