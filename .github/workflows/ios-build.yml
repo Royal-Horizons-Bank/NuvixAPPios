@@ -39,38 +39,32 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # We use 'wholemodule' mode to help React 19 / Reanimated find its headers
+          # 'wholemodule' helps React 19 / Reanimated find its headers during archiving
           xcodebuild archive \
-            -workspace nuvixAPP.xcworkspace \
-            -scheme nuvixAPP \
+            -workspace Nuvixapp.xcworkspace \
+            -scheme Nuvixapp \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath ./nuvixAPP.xcarchive \
+            -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            SWIFT_COMPILATION_MODE=wholemodule
+            SWIFT_COMPILATION_MODE=wholemodule | tee ../xcode_raw.log
 
       - name: Package into .ipa
         if: success()
         run: |
           mkdir -p Payload
-          # Search for the .app file inside the archive we just made
-          APP_PATH=$(find ios/nuvixAPP.xcarchive -name "*.app" -type d | head -n 1)
+          # Search for the .app folder inside the archive we just made
+          APP_PATH=$(find ios/Nuvixapp.xcarchive -name "*.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: .app file not found!"
-            exit 1
-          fi
-          
           cp -R "$APP_PATH" Payload/
-          zip -r nuvixAPP_unsigned.ipa Payload
+          zip -r Nuvixapp_unsigned.ipa Payload
 
-      - name: Upload Artifact
+      - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nuvixAPP-Build
+          name: Nuvixapp-Build-Results
           path: |
-            nuvixAPP_unsigned.ipa
-            ios/build_output.log
+            Nuvixapp_unsigned.ipa
+            xcode_raw.log
