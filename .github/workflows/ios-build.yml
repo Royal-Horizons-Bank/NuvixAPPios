@@ -28,7 +28,7 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
-      - name: Generate Native iOS Code
+      - name: Generate Native iOS Code (Prebuild)
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
@@ -37,10 +37,9 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
-        id: build_step
         run: |
           cd ios
-          set -o pipefail
+          # We use 'wholemodule' mode to help React 19 / Reanimated find its headers
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -48,26 +47,30 @@ jobs:
             -sdk iphoneos \
             -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO | tee ../xcodebuild_error.log
-
-      - name: Upload Error Log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Xcode-Crash-Log
-          path: xcodebuild_error.log
+            CODE_SIGNING_REQUIRED=NO \
+            SWIFT_COMPILATION_MODE=wholemodule
 
       - name: Package into .ipa
         if: success()
         run: |
           mkdir -p Payload
-          APP_DIR=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
-          cp -R "$APP_DIR" Payload/
+          # Search for the .app file inside the archive we just made
+          APP_PATH=$(find ios/Nuvixapp.xcarchive -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app file not found!"
+            exit 1
+          fi
+          
+          cp -R "$APP_PATH" Payload/
           zip -r Nuvixapp_unsigned.ipa Payload
 
       - name: Upload Artifact
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvixapp-Unsigned-Package
-          path: Nuvixapp_unsigned.ipa
+          name: Nuvixapp-Build
+          path: |
+            Nuvixapp_unsigned.ipa
+            ios/build_output.log
