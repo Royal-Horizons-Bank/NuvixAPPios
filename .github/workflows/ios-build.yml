@@ -37,34 +37,39 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
+        id: xcodebuild
         run: |
           cd ios
-          # 1. Automatically detect the scheme name
-          SCHEME_NAME=$(xcodebuild -list -json | jq -r '.workspace.schemes[0]')
-          echo "Detected Scheme: $SCHEME_NAME"
-          
-          # 2. Build using the detected scheme
-          xcodebuild archive \
+          # 'tee' saves the log to xcode_raw.log even if it fails
+          xcodebuild clean archive \
             -workspace *.xcworkspace \
-            -scheme "$SCHEME_NAME" \
+            -scheme Nuvix \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath ./build_output.xcarchive \
+            -archivePath $PWD/build/Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO | tee ../xcode_raw.log
 
-      - name: Package into .ipa
-        run: |
-          mkdir -p Payload
-          # Search everywhere for the .app folder generated
-          APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
-          echo "Packing app from: $APP_PATH"
-          
-          cp -R "$APP_PATH" Payload/
-          zip -r nuvix_build.ipa Payload
-
-      - name: Upload Artifact
+      - name: Upload Logs on Failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-App-Final
-          path: nuvix_build.ipa
+          name: xcode-failure-logs
+          path: xcode_raw.log
+
+      - name: Locate and Package .app
+        if: success()
+        run: |
+          mkdir -p final_output/Payload
+          APP_PATH=$(find ios/build/Nuvix.xcarchive -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" final_output/Payload/
+          cd final_output
+          zip -r ../Nuvix_Build.ipa Payload
+
+      - name: Upload IPA
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nuvix-App-Package
+          path: Nuvix_Build.ipa
