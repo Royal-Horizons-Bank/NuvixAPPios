@@ -40,6 +40,7 @@ jobs:
         id: xcodebuild
         run: |
           cd ios
+          # 'tee' saves the log to xcode_raw.log even if it fails
           xcodebuild clean archive \
             -workspace *.xcworkspace \
             -scheme Nuvix \
@@ -56,17 +57,19 @@ jobs:
           name: xcode-failure-logs
           path: xcode_raw.log
 
-      - name: Package .app to IPA
+      - name: Locate and Package .app
         if: success()
         run: |
-          mkdir -p Payload
+          mkdir -p final_output/Payload
           APP_PATH=$(find ios/build/Nuvix.xcarchive -name "*.app" -type d | head -n 1)
-          cp -R "$APP_PATH" Payload/
-          zip -r Nuvix_Build.ipa Payload
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" final_output/Payload/
+          cd final_output
+          zip -r ../Nuvix_Build.ipa Payload
 
       - name: Upload IPA
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvix-IPA
+          name: Nuvix-App-Package
           path: Nuvix_Build.ipa
