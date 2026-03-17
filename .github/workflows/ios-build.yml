@@ -39,7 +39,7 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # We use 'pipefail' so if xcodebuild fails, the whole action stops early
+          # Use pipefail so the script stops if Xcode crashes
           set -o pipefail
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
@@ -52,15 +52,15 @@ jobs:
             SWIFT_COMPILATION_MODE=wholemodule
 
       - name: Package into .ipa
-        if: success()
         run: |
           mkdir -p Payload
-          # Search everywhere for any .app folder created in the build process
+          # Search the ENTIRE runner for the .app folder created during the build
+          # This bypasses the "No such file or directory" error for the archive folder
           APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "Searching for any .app as fallback..."
-            APP_PATH=$(find . -name "*.app" -type d | head -n 1)
+             echo "Fallback search for .app..."
+             APP_PATH=$(find . -name "Nuvixapp.app" -type d | head -n 1)
           fi
           
           echo "Found app at: $APP_PATH"
@@ -68,8 +68,7 @@ jobs:
           zip -r Nuvixapp_unsigned.ipa Payload
 
       - name: Upload Artifact
-        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Nuvixapp-Package
+          name: Nuvixapp-Final-IPA
           path: Nuvixapp_unsigned.ipa
