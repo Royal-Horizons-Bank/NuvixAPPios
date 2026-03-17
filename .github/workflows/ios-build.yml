@@ -37,9 +37,10 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
+        id: build_step
         run: |
           cd ios
-          # Hardcoded exactly to the Capital 'N' from your app.json
+          set -o pipefail
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -47,22 +48,26 @@ jobs:
             -sdk iphoneos \
             -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO | tee ../xcodebuild_error.log
+
+      - name: Upload Error Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xcode-Crash-Log
+          path: xcodebuild_error.log
 
       - name: Package into .ipa
+        if: success()
         run: |
-          cd ios
           mkdir -p Payload
-          
-          # Find the .app and copy it
           APP_DIR=$(find . -name "*.app" -type d | grep "Release-iphoneos" || find . -name "*.app" -type d | head -n 1)
-          echo "Found App at: $APP_DIR"
-          
           cp -R "$APP_DIR" Payload/
           zip -r Nuvixapp_unsigned.ipa Payload
 
       - name: Upload Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Nuvixapp-Unsigned-Package
-          path: ios/Nuvixapp_unsigned.ipa
+          path: Nuvixapp_unsigned.ipa
