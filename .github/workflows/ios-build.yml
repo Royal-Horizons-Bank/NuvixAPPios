@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -37,9 +37,9 @@ jobs:
           bundle exec pod install
 
       - name: Build Unsigned Archive
-        # Raw output here so you can see any specific library errors in the console
         run: |
           cd ios
+          # Added -quiet to filter out the noise and find the real 3 failures
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -48,18 +48,17 @@ jobs:
             -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            SWIFT_COMPILATION_MODE=wholemodule
+            -quiet
 
       - name: Package into .ipa
         if: always()
         run: |
           mkdir -p Payload
-          # The "Search and Rescue" command
-          # Scans the entire workspace for the .app folder created by the build
+          # Search for the .app folder anywhere in the runner
           APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "Direct search failed. Trying global fallback..."
+            echo "Direct search failed. Scanning globally for Nuvixapp.app..."
             APP_PATH=$(find . -name "Nuvixapp.app" -type d | grep -v "Pods" | head -n 1)
           fi
 
@@ -68,7 +67,7 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL FAILURE: No .app file was created. Check the Build Archive logs above."
+            echo "CRITICAL: Build failed to produce an app file. Check the errors in the step above."
             exit 1
           fi
 
