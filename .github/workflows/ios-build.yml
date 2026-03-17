@@ -40,7 +40,7 @@ jobs:
         id: xcodebuild
         run: |
           cd ios
-          # Use a wildcard for the workspace to avoid naming issues
+          # Creating the log file in the workspace root instead of the /ios subfolder
           xcodebuild clean archive \
             -workspace *.xcworkspace \
             -scheme Nuvix \
@@ -48,19 +48,22 @@ jobs:
             -sdk iphoneos \
             -archivePath $PWD/build/Nuvix.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO | tee ../xcode_build.log
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-log
+          path: xcode_build.log
 
       - name: Package into .ipa
         if: success()
         run: |
           cd ios/build
           mkdir -p Payload
-          
-          # Use a wildcard (*) to find the .app file inside the archive 
-          # and copy it into the Payload folder
+          # Using a wildcard to catch the .app folder even if named Nuvix+ or Nuvix
           cp -R Nuvix.xcarchive/Products/Applications/*.app Payload/
-          
-          # Zip the Payload folder to create the .ipa
           zip -r app.ipa Payload
 
       - name: Upload IPA Artifact
@@ -69,11 +72,3 @@ jobs:
         with:
           name: Nuvix-unsigned-ipa
           path: ios/build/app.ipa
-
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcode-build-log
-          # This captures the log even if it failed at the archive stage
-          path: ios/build_output.log
