@@ -36,34 +36,31 @@ jobs:
           cd ios
           bundle exec pod install
 
-      - name: Build Unsigned Archive (Detailed Logging)
+      - name: Build Unsigned Archive
+        id: xcodebuild
         run: |
           cd ios
+          # Use a wildcard for the workspace to avoid naming issues
           xcodebuild clean archive \
-            -workspace Nuvix.xcworkspace \
+            -workspace *.xcworkspace \
             -scheme Nuvix \
             -configuration Release \
             -sdk iphoneos \
             -archivePath $PWD/build/Nuvix.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            | tee build_output.log | grep -A 5 -B 5 "error:" || true
-        # We use 'tee' to save the full log to a file while still showing it in the console.
-        # We also grep for "error:" to try and highlight it in the GitHub UI.
-
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcode-build-log
-          path: ios/build_output.log
+            CODE_SIGNING_REQUIRED=NO
 
       - name: Package into .ipa
         if: success()
         run: |
           cd ios/build
           mkdir -p Payload
-          cp -R Nuvix.xcarchive/Products/Applications/Nuvix.app Payload/
+          
+          # Use a wildcard (*) to find the .app file inside the archive 
+          # and copy it into the Payload folder
+          cp -R Nuvix.xcarchive/Products/Applications/*.app Payload/
+          
+          # Zip the Payload folder to create the .ipa
           zip -r app.ipa Payload
 
       - name: Upload IPA Artifact
@@ -72,3 +69,11 @@ jobs:
         with:
           name: Nuvix-unsigned-ipa
           path: ios/build/app.ipa
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-log
+          # This captures the log even if it failed at the archive stage
+          path: ios/build_output.log
