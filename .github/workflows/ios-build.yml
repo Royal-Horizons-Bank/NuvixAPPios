@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20' # Updated to match modern Expo 55 requirements
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -39,7 +39,6 @@ jobs:
       - name: Build Unsigned Archive
         run: |
           cd ios
-          # Added -quiet to filter out the noise and find the real 3 failures
           xcodebuild archive \
             -workspace Nuvixapp.xcworkspace \
             -scheme Nuvixapp \
@@ -48,17 +47,19 @@ jobs:
             -archivePath ./Nuvixapp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            -quiet
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            GCC_GENERATE_DEBUGGING_SYMBOLS=NO \
+            SWIFT_COMPILATION_MODE=wholemodule
 
       - name: Package into .ipa
         if: always()
         run: |
           mkdir -p Payload
-          # Search for the .app folder anywhere in the runner
+          # Exhaustive search for the .app folder
           APP_PATH=$(find . -name "*.app" -type d | grep "Release-iphoneos" | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "Direct search failed. Scanning globally for Nuvixapp.app..."
+            echo "Direct search failed. Scanning globally..."
             APP_PATH=$(find . -name "Nuvixapp.app" -type d | grep -v "Pods" | head -n 1)
           fi
 
@@ -67,7 +68,7 @@ jobs:
             cp -R "$APP_PATH" Payload/
             zip -r Nuvixapp_unsigned.ipa Payload
           else
-            echo "CRITICAL: Build failed to produce an app file. Check the errors in the step above."
+            echo "CRITICAL: Build failed. Check the errors above."
             exit 1
           fi
 
