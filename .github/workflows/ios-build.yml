@@ -31,23 +31,14 @@ jobs:
       - name: Generate Native iOS Code (Prebuild)
         run: npx expo prebuild --platform ios --clean
 
-      - name: Debug - List generated iOS files
-        run: ls -la ios
-
       - name: Install CocoaPods
         run: |
           cd ios
           bundle exec pod install
 
-      - name: Debug - Verify Xcode Scheme
+      - name: Build Unsigned Archive (Detailed Logging)
         run: |
           cd ios
-          xcodebuild -list -workspace Nuvix.xcworkspace
-
-      - name: Build Unsigned Archive
-        run: |
-          cd ios
-          # Using "Nuvix" because Expo strips the "+" from "Nuvix+"
           xcodebuild clean archive \
             -workspace Nuvix.xcworkspace \
             -scheme Nuvix \
@@ -55,9 +46,20 @@ jobs:
             -sdk iphoneos \
             -archivePath $PWD/build/Nuvix.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            | tee build_output.log | grep -A 5 -B 5 "error:" || true
+        # We use 'tee' to save the full log to a file while still showing it in the console.
+        # We also grep for "error:" to try and highlight it in the GitHub UI.
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-log
+          path: ios/build_output.log
 
       - name: Package into .ipa
+        if: success()
         run: |
           cd ios/build
           mkdir -p Payload
@@ -65,6 +67,7 @@ jobs:
           zip -r app.ipa Payload
 
       - name: Upload IPA Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Nuvix-unsigned-ipa
